@@ -17,16 +17,12 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
-from . import constants
-from .constants import log
-
 import re
 import os
 import sys
 import uuid
 import time
 import inspect
-import logging
 
 # -- Our direct file loading depends on whether we're
 # -- in python 2 or python 3. Therefore we wrap these
@@ -40,22 +36,7 @@ except ImportError:
     import imp
     _py_version = 2
 
-
-# ------------------------------------------------------------------------------
-def enable_debugging(state=True):
-    """
-    Convenience function for enabling the debug log output of factories.
-
-    :param state: If True then debug log messages will be output.
-    :type state: bool
-
-    :return: None
-    """
-    if state:
-        log.setLevel(logging.DEBUG)
-
-    else:
-        log.setLevel(logging.INFO)
+from .constants import log
 
 
 # ------------------------------------------------------------------------------
@@ -71,7 +52,7 @@ class Factory(object):
     the following (generally quite useful nice-to-have) features are
     absent:
 
-        * Ability to specify a plugin identifer
+        * Ability to specify a plugin identifier
         * Ability to access a plugin by identifier
         * Removing plugins from the factory
         * Plugin sorted in user-defined priority
@@ -115,6 +96,7 @@ class Factory(object):
         >>> 
         >>> # -- Equally we can start to request specific plugin classes
         >>> json_reader = factory.request('JSONReader')
+
     """
 
     # -- These are loading mechanism enums
@@ -123,8 +105,10 @@ class Factory(object):
     IMPORTABLE = 2
 
     # -- Regex to test for any of the relevant python
-    # -- file types
-    _PY_CHECK = re.compile('([a-zA-Z].*)(\.py$|\.pyc$)')
+    # -- file types.
+    # -- Will match any .py or .pyc filename NOT starting with
+    # -- underscore, space or numbers.
+    _PY_CHECK = re.compile(r'^[^_ 0-9]+?[\w]+?(\.py$|\.pyc$)')
 
     # --------------------------------------------------------------------------
     def __init__(self,
@@ -185,7 +169,7 @@ class Factory(object):
 
         # -- Any paths we're giving during the init we should
         # -- add_path
-        if paths and isinstance(paths, (list, tuple)):
+        if paths and isinstance(paths, (list, tuple, set)):
             for path in paths:
                 self.add_path(path, mechanism=mechanism)
 
@@ -196,7 +180,8 @@ class Factory(object):
 
     # --------------------------------------------------------------------------
     def __repr__(self):
-        return '[FACTORY - Identifier: {}, Plugin Count: {}]'.format(
+        return '{}(Identifier={}, PluginCount={})'.format(
+            self.__class__.__name__,
             self._identifier,
             len(self._plugins),
         )
@@ -226,11 +211,8 @@ class Factory(object):
             else:
                 log.debug(message)
 
-        except:
-            pass
-
-        # -- Log regardless if we're a warning and we're supposed
-        # -- to log errors
+        except Exception:
+            log.exception('Failed to log message!')
 
     # --------------------------------------------------------------------------
     def _get_identifier(self, plugin):
@@ -312,17 +294,17 @@ class Factory(object):
             elif _py_version == 2:
                 if filepath.endswith('.py'):
                     return imp.load_source(
-                        filename + str(uuid.uuid4()),
+                        module_name,
                         filepath,
                     )
 
                 elif filepath.endswith('.pyc'):
                     return imp.load_compiled(
-                        filename + str(uuid.uuid4()),
+                        module_name,
                         filepath,
                     )
 
-        except BaseException:
+        except Exception:
             self._log(
                 'Failed trying to direct load : {} ({})'.format(
                     filepath,
@@ -458,23 +440,24 @@ class Factory(object):
 
         :return: None
 
-        ..code-block:: python
+        .. code-block:: python
 
-        >>> from factories.examples.reader import DataReader
-        >>>
-        >>> # -- Instance a new factory
-        >>> reader = DataReader()
-        >>>
-        >>> # -- Print how many plugins we have
-        >>> print(len(reader.factory.plugins()))
-        2
-        >>>
-        >>> # -- Clear the factory
-        >>> reader.factory.clear()
-        >>>
-        >>> # -- We now have no plugins in the factory
-        >>> print(len(reader.factory.plugins()))
-        0
+            >>> from factories.examples.reader import DataReader
+            >>>
+            >>> # -- Instance a new factory
+            >>> reader = DataReader()
+            >>>
+            >>> # -- Print how many plugins we have
+            >>> print(len(reader.factory.plugins()))
+            2
+            >>>
+            >>> # -- Clear the factory
+            >>> reader.factory.clear()
+            >>>
+            >>> # -- We now have no plugins in the factory
+            >>> print(len(reader.factory.plugins()))
+            0
+
         """
         # -- Start clearing out the factory variables
         self._plugins = list()
@@ -490,7 +473,7 @@ class Factory(object):
 
         :return: list(str, str, ...)
 
-        ..code-block:: python
+        .. code-block:: python
 
             >>> from factories.examples.reader import DataReader
             >>>
@@ -500,6 +483,7 @@ class Factory(object):
             >>> # -- Print how many plugins we have
             >>> print(reader.factory.identifiers())
             set(['JSONReader', 'INIReader'])
+
         """
         return {
             self._get_identifier(plugin)
@@ -513,7 +497,7 @@ class Factory(object):
 
         :return: List of paths
 
-        ..code-block:: python
+        .. code-block:: python
 
             >>> from factories.examples.reader import DataReader
             >>>
@@ -523,6 +507,7 @@ class Factory(object):
             >>> # -- Print how many plugins we have
             >>> print(reader.factory.paths())
             {...factories/examples/reader/readers}
+
         """
         # -- Cast the keys to a list to ensure compatibility
         # -- between python 2.x and 3.x
@@ -536,7 +521,7 @@ class Factory(object):
 
         :return: list(class, class, ...)
 
-        ..code-block:: python
+        .. code-block:: python
 
             >>> from factories.examples.reader import DataReader
             >>>
@@ -595,7 +580,7 @@ class Factory(object):
 
         :return: Count of plugins add_pathed
 
-        ..code-block:: python
+        .. code-block:: python
 
             >>> import os
             >>> import factories
@@ -617,10 +602,15 @@ class Factory(object):
             ...     os.path.dirname(factories.examples.reader.readers.__file__),
             ...     mechanism=factory.GUESS,
             ... )
+
         """
 
         # -- Refuse none-type paths
         if not path:
+            return 0
+
+        if not os.path.isdir(path):
+            self._log('Path {} is not a valid directory!'.format(path))
             return 0
 
         # -- Regardless of what is found along the path we store the
@@ -632,7 +622,7 @@ class Factory(object):
         # -- to doing anything
         current_plugin_count = len(self._plugins)
 
-        filepaths = list()
+        filepaths = []
 
         # -- Collate all our valid files in an initial pass. This could
         # -- be done in situ, but for the sake of clarity its done up-front
@@ -697,7 +687,7 @@ class Factory(object):
                 continue
 
             # -- We have no control over what we load, so we wrap
-            # -- this is a try/except
+            # -- this is a try/except.
             try:
 
                 # -- Look for implementations of the abstract
@@ -709,17 +699,25 @@ class Factory(object):
                     )
 
                     # -- If this bases off the abstract, we should store it
-                    if inspect.isclass(item):
+                    if not inspect.isclass(item):
+                        continue
 
-                        # -- We do not want to pick up the abstract
-                        # -- itself, so ignore that
-                        if item == self._abstract:
-                            continue
+                    # -- We do not want to pick up the abstract
+                    # -- itself, so ignore that.
+                    if item is self._abstract:
+                        continue
 
-                        if issubclass(item, self._abstract):
-                            self._plugins.append(item)
-                            self._log('Loaded Plugin : {}'.format(item))
+                    if issubclass(item, self._abstract):
+                        self._plugins.append(item)
+                        self._log('Loaded Plugin : {}'.format(item))
 
+            # -- We keep the exception type explitely broad as it
+            # -- is completely out of our control what might be being
+            # -- imported
+            except Exception:
+                self._log(str(sys.exc_info()), is_warning=True)
+
+            else:
                 # -- Output the time it took to load this module
                 delta_time = time.time() - start_time
                 self._log(
@@ -729,12 +727,6 @@ class Factory(object):
                     ),
                     is_warning=False,
                 )
-
-            # -- We keep the exception type explitely broad as it
-            # -- is completely out of our control what might be being
-            # -- imported
-            except BaseException:
-                self._log(str(sys.exc_info()), is_warning=True)
 
         # -- Return the amount of plugins which have
         # -- been loaded during this registration pass
@@ -750,7 +742,7 @@ class Factory(object):
         classes without needing to search disk locations.
 
         :param class_type: The class type to add into the factories
-            repertoire
+            repertoire.
         :type class_type: type
 
         :return: True if the registration was successful.
@@ -761,7 +753,10 @@ class Factory(object):
         if not issubclass(class_type, self._abstract):
             return False
 
-        self._plugins.append(class_type)
+        if class_type not in self._plugins:
+            self._plugins.append(class_type)
+
+        return True
 
     # --------------------------------------------------------------------------
     def reload(self):
@@ -803,7 +798,7 @@ class Factory(object):
 
         :return: Plugin Class (or None)
 
-        ..code-block::
+        .. code-block:: python
 
             >>> from factories.examples.reader import DataReader
             >>>
@@ -816,11 +811,11 @@ class Factory(object):
             >>> print(plugin.__name__)
             JSONReader
 
-        Equaly you can specify the version of a plugin you want when
+        Equally you can specify the version of a plugin you want when
         you're dealing with factories which have the version identifier
         defined:
 
-        ..code-block:: python
+        .. code-block:: python
 
             >>> from factories.examples.reader import DataReader
             >>>
@@ -834,6 +829,7 @@ class Factory(object):
             JSONReader
             >>> print(plugin.version)
             1
+
         """
         # -- Get all the plugins which match the given
         # -- identifier
@@ -866,7 +862,7 @@ class Factory(object):
         # -- If we have not been given a version we simply return
         # -- the plugin with the highest value
         if not version:
-            return versions[max(versions.keys())]
+            return versions[max(versions)]
 
         # -- If the requested version is not in the versions
         # -- available we return None
@@ -897,7 +893,7 @@ class Factory(object):
         
         :return: None 
         
-        ..code-block::
+        .. code-block:: python
         
             >>> from factories.examples.reader import DataReader
             >>> 
@@ -915,6 +911,7 @@ class Factory(object):
             >>> # -- remove_paths the plugins too
             >>> print(len(reader.factory.plugins()))
             0
+
         """
         # -- Take a snapshot of the path data
         path_data = self._add_pathed_paths.copy()
@@ -923,11 +920,13 @@ class Factory(object):
         self._plugins = list()
         self._add_pathed_paths = dict()
 
+        abs_path = os.path.abspath(path)
+
         # -- Now cycle over the path data and re-add_path them
         for original_path, mechanism in path_data.items():
 
             # -- Skip the path we're being asked to remove
-            if os.path.abspath(original_path) == os.path.abspath(path):
+            if os.path.abspath(original_path) == abs_path:
                 continue
 
             self.add_path(
@@ -946,7 +945,7 @@ class Factory(object):
         
         :return: list(int, int, ...) 
         
-        ..code-block:: python
+        .. code-block:: python
         
             >>> from factories.examples.reader import DataReader
             >>> 
@@ -956,6 +955,7 @@ class Factory(object):
             >>> # -- Get a plugin by identifier
             >>> print(reader.factory.versions('JSONReader'))
             [1]
+
         """
         if not self._version:
             return list()
@@ -965,13 +965,3 @@ class Factory(object):
             for plugin in self._plugins
             if self._get_identifier(plugin) == identifier
         )
-
-
-# ------------------------------------------------------------------------------
-# -- Check if we need to enable debugging or not by default
-enable_debugging(
-    os.environ.get(
-        constants.DEBUG_ENVVAR,
-        False,
-    ),
-)

@@ -61,11 +61,12 @@ __copyright__ = "Copyright (C) 2019 Michael Malinowski"
 __license__ = "MIT"
 __version__ = "1.2.0"
 
+
 from .factory import (
     Factory,
-    enable_debugging,
 )
 
 from .constants import (
+    enable_debugging,
     log,
 )

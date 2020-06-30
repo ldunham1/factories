@@ -10,20 +10,20 @@ resulting data is returned.
 
 You can try this example by running:
 
-.. code-block:: python
+    .. code-block:: python
 
-    >>> from factories.examples import reader
-    >>> 
-    >>> # -- Instance a reader
-    >>> data_reader = reader.DataReader()
-    >>> 
-    >>> # -- Read some data from an ini file
-    >>> data = data_reader.read(reader.ini_path)
-    >>> print(data)
-    >>> 
-    >>> # -- Now read some json data
-    >>> data = data_reader.read(reader.json_path)
-    >>> print(data)
+        >>> from factories.examples import reader
+        >>>
+        >>> # -- Instance a reader
+        >>> data_reader = reader.DataReader()
+        >>>
+        >>> # -- Read some data from an ini file
+        >>> data = data_reader.read(reader.ini_path)
+        >>> print(data)
+        >>>
+        >>> # -- Now read some json data
+        >>> data = data_reader.read(reader.json_path)
+        >>> print(data)
 
 """
 import os
