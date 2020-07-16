@@ -17,12 +17,12 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
-import re
-import os
-import sys
-import uuid
-import time
 import inspect
+import os
+import re
+import sys
+import time
+import uuid
 
 # -- Our direct file loading depends on whether we're
 # -- in python 2 or python 3. Therefore we wrap these
@@ -37,6 +37,25 @@ except ImportError:
     _py_version = 2
 
 from .constants import log
+
+
+# ------------------------------------------------------------------------------
+def is_same_path(path_a, path_b):
+    """
+    Compare the given paths.
+    Paths are expanded and normalized on comparison.
+
+    :param path_a: Path to compare.
+    :type path_a: str
+
+    :param path_b: Path to compare.
+    :type path_b: str
+
+    :return: True if the paths are the same.
+    :rtype: bool
+    """
+    norm_path = lambda x: os.path.realpath(os.path.normpath(x))
+    return norm_path(path_a) == norm_path(path_b)
 
 
 # ------------------------------------------------------------------------------
@@ -117,7 +136,7 @@ class Factory(object):
                  plugin_identifier=None,
                  versioning_identifier=None,
                  envvar=None,
-                 mechanism=0,
+                 mechanism=GUESS,
                  log_errors=True):
         """
         :param abstract: The abstract class to utilise when searching for
@@ -128,7 +147,7 @@ class Factory(object):
             for plugins. All paths should be absolute.
             Any paths given directly to the factory during the initialisation
             will utilise the guessing Mechanisms
-        :type paths: list(str, str, ...)
+        :type paths: list(str)
 
         :param plugin_identifier: This is used to idenfify one type of plugin
             from another. By default the plugin class name is used, however
@@ -149,6 +168,35 @@ class Factory(object):
         :param envvar: Optional environment variable name. If defined this
             will be inspected and split by ; and registered as paths.
         :type envvar: str
+
+        :param mechanism: This allows you to specify the behaviour for
+            loading plugin. Current options are:
+
+                * IMPORTABLE:
+                    This mechanism should be used if your code resides within
+                    already importable locations. This method is mandatory if
+                    your code contains relative imports. Because this is
+                    importing modules which are available on the sys.path the
+                    class names will resolve nicely too.
+
+                * LOAD_SOURCE
+                    This is useful when your plugin code is outside of the
+                    interpreters sys.path. This mechanism will load the file
+                    directly rather than import it from sys.modules.
+                    This method has flexibility in terms of structure but
+                    means you cannot utilise relative import paths within
+                    your plugin. All loaded plugins using this module are
+                    imported into a namespace defined through a uuid.
+
+                * GUESS
+                    This is the default mechanism. When guessing the factory
+                    will attempt to utilise the IMPORTABLE method first, and
+                    only if the module is not accessible from within
+                    sys.modules will it fall back to LOAD_SOURCE. This method
+                    means you do not have to care too much, and is default
+                    behaviour.
+        :type mechanism: int
+
         """
         # -- Store our incoming variables
         self._abstract = abstract
@@ -175,7 +223,7 @@ class Factory(object):
 
         # -- Now register any paths defined by environment variable
         if envvar and envvar in os.environ:
-            for path in os.environ[envvar].split(';'):
+            for path in os.environ[envvar].split(os.pathsep):
                 self.add_path(path, mechanism=mechanism)
 
     # --------------------------------------------------------------------------
@@ -202,17 +250,11 @@ class Factory(object):
             message,
         )
 
-        # -- Wrap this in a try, because we never want to fail because
-        # -- we cannot log a message for any reason.
-        try:
-            if is_warning and self._log_errors:
-                log.warning(message)
+        if is_warning and self._log_errors:
+            log.warning(message)
 
-            else:
-                log.debug(message)
-
-        except Exception:
-            log.exception('Failed to log message!')
+        else:
+            log.debug(message)
 
     # --------------------------------------------------------------------------
     def _get_identifier(self, plugin):
@@ -272,9 +314,7 @@ class Factory(object):
         :return: List of found plugins
         """
         filename = os.path.splitext(
-            os.path.basename(
-                filepath,
-            ),
+            os.path.basename(filepath)
         )[0]
 
         # -- Generate a unique name for the module to prevent
@@ -366,64 +406,74 @@ class Factory(object):
 
         # noinspection PyBroadException
         try:
-            exec('import {}'.format(lone_name))
+            mod = __import__(lone_name)
 
-        except BaseException:
-            pass
+        except Exception:
+            log.debug(
+                'Failed to lazy import "{}"'.format(lone_name),
+                exc_info=True,
+            )
 
-        # -- If the lone name is in the sys.modules list we then
-        # -- need to check if it equates to the same file we're
-        # -- looking at.
-        if lone_name in sys.modules:
-            add_pathed_path = sys.modules[lone_name].__file__.replace('\\', '/')
+        # -- If the lone_name imported we then need to check if it
+        # -- equates to the same file we're looking at.
+        else:
+            add_pathed_path = mod.__file__.replace('\\', '/')
 
             # -- If it matches we return it as we do not need to start
             # -- looking at __init__ structures
-            if filepath == add_pathed_path:
+            if is_same_path(filepath, add_pathed_path):
                 return lone_name
 
         # -- Collage a list of parts which we can move between
         parts = filepath.split('/')
         package_parts = []
 
-        # -- Keep cycling for as long as we have a path to actually
-        # -- cycle
-        while parts:
+        # -- Keep cycling for as long as we have enough path parts to
+        # -- actually cycle.
+        while len(parts) > 1:
 
-            # -- Build a path to look for
-            # -- TODO: This needs to work with PYC & PYD files
-            package_test = os.path.join(
-                '/'.join(parts[:-1]),
-                '__init__.py',
-            )
+            # -- Create directory for the
+            directory = os.path.join(*parts[:-1])
 
             # -- Get the current part
             part = parts.pop()
 
-            # -- If the path does not exist, we have hit the end
-            # -- of the package
-            if not os.path.exists(package_test):
+            for ext in ['.py', '.pyc', '.pyd']:
+
+                # TODO: This isn't compatible with python 3.3+ packages not needing an __init__
+                #  https://www.python.org/dev/peps/pep-0420/
+                # -- Build a path to look for.
+                package_test = os.path.join(
+                    directory,
+                    '__init__' + ext,
+                ).replace('\\', '/')
+
+                # -- If the path does not exist, we have hit the end
+                # -- of the package
+                if os.path.exists(package_test):
+                    continue
 
                 # -- Pop the final component and define the
                 # -- sys path and the package name
                 package_parts.append(part)
                 package_name = '.'.join(reversed(package_parts))
 
-                # -- If our package name has a suffix we need to remove
-                # -- it. Note: We do not test the last characters, as
-                # -- this means the test works for .py, .pyc and .pyd files
-                if '.py' in package_name:
+                # -- If our package name has a suffix we need to remove it.
+                if ext in package_name:
                     package_name = os.path.splitext(package_name)[0]
 
                 # noinspection PyBroadException
                 try:
-                    exec('import {}'.format(package_name))
+                    __import__(package_name)
 
-                except BaseException:
-                    pass
+                except Exception:
+                    log.debug(
+                        'Failed to lazy import "{}"'.format(package_name),
+                        exc_info=True,
+                    )
 
                 # -- Return our type of data
-                if package_name in sys.modules:
+                else:
                     return package_name
 
             # -- Pop the item and keep searching
@@ -471,7 +521,7 @@ class Factory(object):
         The list of class names will be unique - therefore classes which share
         the same name will not appear twice.
 
-        :return: list(str, str, ...)
+        :return: set(str)
 
         .. code-block:: python
 
@@ -519,7 +569,7 @@ class Factory(object):
         Returns a unique list of plugins. Where multiple versions are available
         the highest version will be given.
 
-        :return: list(class, class, ...)
+        :return: list(class)
 
         .. code-block:: python
 
@@ -533,6 +583,7 @@ class Factory(object):
             ...     print(plugin.__name__)
             JSONReader
             INIReader
+
         """
         return [
             self.request(identifier)
@@ -541,7 +592,7 @@ class Factory(object):
 
     # --------------------------------------------------------------------------
     # noinspection PyBroadException
-    def add_path(self, path, mechanism=0):
+    def add_path(self, path, mechanism=GUESS):
         """
         Registers a search address with the factory. The factory will
         immediately being searching recursively within this location for
@@ -576,9 +627,10 @@ class Factory(object):
                     sys.modules will it fall back to LOAD_SOURCE. This method
                     means you do not have to care too much, and is default
                     behaviour.
+
         :type mechanism: int
 
-        :return: Count of plugins add_pathed
+        :return: Count of plugins add_pathed.
 
         .. code-block:: python
 
@@ -654,13 +706,15 @@ class Factory(object):
 
             # -- If we need to import - or guess, then we attempt to
             # -- get the package name
-            if mechanism == self.IMPORTABLE or mechanism == self.GUESS:
+            if (mechanism == self.IMPORTABLE or
+                    mechanism == self.GUESS):
                 module_to_inspect = self._mechanism_import(filepath)
 
                 # -- The plugin name may clash with a module name, so we
                 # -- need to protect against that and fall back to a direct
                 # -- load if that is the case
-                if module_to_inspect and module_to_inspect.__file__ != filepath:
+                if (module_to_inspect and
+                        not is_same_path(module_to_inspect.__file__, filepath)):
                     module_to_inspect = None
 
                 if module_to_inspect:
@@ -669,7 +723,8 @@ class Factory(object):
             # -- If we do not have a module, and we're using the loading
             # -- or guess Mechanisms
             if not module_to_inspect:
-                if mechanism == self.LOAD_SOURCE or mechanism == self.GUESS:
+                if (mechanism == self.LOAD_SOURCE or
+                        mechanism == self.GUESS):
                     module_to_inspect = self._mechanism_load(filepath)
                     if module_to_inspect:
                         self._log('Direct Load : {}'.format(filepath))
@@ -725,7 +780,6 @@ class Factory(object):
                         module_to_inspect,
                         round(delta_time, 4),
                     ),
-                    is_warning=False,
                 )
 
         # -- Return the amount of plugins which have
@@ -861,7 +915,7 @@ class Factory(object):
 
         # -- If we have not been given a version we simply return
         # -- the plugin with the highest value
-        if not version:
+        if version is None:
             return versions[max(versions)]
 
         # -- If the requested version is not in the versions
@@ -887,8 +941,7 @@ class Factory(object):
         
         Note: This action performs a factory clear and re-scan.
         
-        :param path: Path to remove from the factory. This must be an 
-            absolute path
+        :param path: Path to remove from the factory.
         :type path: str
         
         :return: None 
@@ -920,13 +973,11 @@ class Factory(object):
         self._plugins = list()
         self._add_pathed_paths = dict()
 
-        abs_path = os.path.abspath(path)
-
         # -- Now cycle over the path data and re-add_path them
         for original_path, mechanism in path_data.items():
 
             # -- Skip the path we're being asked to remove
-            if os.path.abspath(original_path) == abs_path:
+            if is_same_path(original_path, path):
                 continue
 
             self.add_path(
@@ -943,7 +994,7 @@ class Factory(object):
         :param identifier: Plugin identifier to check
         :type identifier: str
         
-        :return: list(int, int, ...) 
+        :return: list(int)
         
         .. code-block:: python
         

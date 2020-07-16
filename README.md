@@ -27,7 +27,7 @@ To utilise a factory we first need to declare what the factory will contain. Thi
 
 ```python
 class Tool(object):
-    name = 'unknonw'
+    name = 'unknown'
     
     def activate(self):
         return None
@@ -54,6 +54,8 @@ Note here that we're giving the Factory the Tool class type - it uses this when 
 We can now start adding paths to our factory. The factory will immediately search these locations looking for plugins (any classes which inherit form the Tool clas).
 
 ```python
+import os
+
 # -- Register with a hard coded path
 factory.add_path(
     'c:/some/plugin/location'
@@ -103,6 +105,6 @@ This module comes with a suite of unit tests which give a 94% coverage. It is th
 Whilst every effort goes into stability, given that this is a relatively new module it is always appreciated if you can communicate any bugs or issues to [mike@twisted.space](mike@twisted.space)
 
 
-## Compatability
+## Compatibility
 
 This has been tested under Python 2.7.13 and Python 3.6.6 under both Windows and Ubuntu.

@@ -1,12 +1,11 @@
-from factories.examples.zoo import Zoo
-from factories.examples.reader import DataReader
-
 import os
 import sys
+import unittest
+
+from factories.examples.zoo import Zoo
+from factories.examples.reader import DataReader
 import factories
 import factories.examples.zoo
-
-import unittest
 
 
 # ------------------------------------------------------------------------------
@@ -572,7 +571,7 @@ class FactoryTests(unittest.TestCase):
         # -- Test that we have one animal type in the zoo
         self.assertEqual(
             len(zoo.factory.plugins()),
-            1
+            1,
         )
 
         # -- Test that we can instance our directly registered animal
@@ -582,6 +581,7 @@ class FactoryTests(unittest.TestCase):
             artic_fox.diet(),
             'rabbits!',
         )
+
 
 # ------------------------------------------------------------------------------
 if __name__ == '__main__':
