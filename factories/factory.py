@@ -257,7 +257,7 @@ class Factory(object):
             log.debug(message)
 
     # --------------------------------------------------------------------------
-    def _get_identifier(self, plugin):
+    def get_identifier(self, plugin):
         """
         Utilises the plugin identifier value to request the identifying
         name of the plugin.
@@ -277,7 +277,7 @@ class Factory(object):
         return identifier
 
     # --------------------------------------------------------------------------
-    def _get_version(self, plugin):
+    def get_version(self, plugin):
         """
         Utilises the plugin version identifier value to request the version
         number of the plugin.
@@ -536,7 +536,7 @@ class Factory(object):
 
         """
         return {
-            self._get_identifier(plugin)
+            self.get_identifier(plugin)
             for plugin in self._plugins
         }
 
@@ -890,7 +890,7 @@ class Factory(object):
         matching_plugins = [
             plugin
             for plugin in self._plugins
-            if self._get_identifier(plugin) == plugin_identifier
+            if self.get_identifier(plugin) == plugin_identifier
         ]
 
         # -- If there are no matching plugins we have nothing
@@ -909,7 +909,7 @@ class Factory(object):
 
         # -- Sort out plugins in version order
         versions = {
-            self._get_version(plugin): plugin
+            self.get_version(plugin): plugin
             for plugin in matching_plugins
         }
 
@@ -1012,7 +1012,7 @@ class Factory(object):
             return list()
 
         return sorted(
-            self._get_version(plugin)
+            self.get_version(plugin)
             for plugin in self._plugins
-            if self._get_identifier(plugin) == identifier
+            if self.get_identifier(plugin) == identifier
         )
