@@ -278,7 +278,6 @@ class Factory(object):
         """
         Attempts to find any plugins on the given filepath using the loading
         Mechanisms. This utilises import.load_source.
-
         As such, loading plugins through these Mechanisms has limitations in
         terms of not being able to utilise relative imports, but it has the
         advantage of being able to load plugins from locations outside
@@ -482,7 +481,6 @@ class Factory(object):
         Get a set of plugin class names add_pathed within the factory.
         The list of class names will be unique - therefore classes which share
         the same name will not appear twice.
-        :rtype: set[str]
 
         .. code-block:: python
 
@@ -495,6 +493,7 @@ class Factory(object):
             >>> print(reader.factory.identifiers())
             set(['JSONReader', 'INIReader'])
 
+        :rtype: set[str]
         """
         return {
             self.get_identifier(plugin)
@@ -505,7 +504,6 @@ class Factory(object):
     def paths(self):
         """
         Get all the paths add_pathed in the factory
-        :return list[str]: List of paths.
 
         .. code-block:: python
 
@@ -518,6 +516,7 @@ class Factory(object):
             >>> print(reader.factory.paths())
             ["...factories/examples/reader/readers"]
 
+        :return list[str]: List of paths.
         """
         # -- Cast the keys to a list to ensure compatibility
         # -- between python 2.x and 3.x
@@ -528,7 +527,6 @@ class Factory(object):
         """
         Get a unique list of plugins. Where multiple versions are available
         the highest version will be given.
-        :return: list[type]
 
         .. code-block:: python
 
@@ -543,6 +541,7 @@ class Factory(object):
             JSONReader
             INIReader
 
+        :return: list[type]
         """
         return [
             self.request(identifier)
@@ -557,10 +556,31 @@ class Factory(object):
         immediately being searching recursively within this location for
         any plugins.
 
-        :param path: Absolute folder location
-        :type path: str
+        .. code-block:: python
 
-        :param mechanism: This allows you to specify the behaviour for
+            >>> import os
+            >>> import factories
+            >>>
+            >>> # -- We import these for demonstration purposes. We will utilise
+            >>> # -- the base class and the demonstration plugins
+            >>> import factories.examples.reader
+            >>> import factories.examples.reader.readers
+            >>>
+            >>> # -- Instance a factory, giving the abstract (so the factory
+            >>> # -- knows what it can store)
+            >>> factory = factories.Factory(
+            ...     abstract = factories.examples.reader.ReaderPlugin,
+            ... )
+            >>>
+            >>> # -- Register a path, allowing the factory to guess whether
+            >>> # -- to import or do a direct load
+            >>> factory.add_path(
+            ...     os.path.dirname(factories.examples.reader.readers.__file__),
+            ...     mechanism=factory.GUESS,
+            ... )
+
+        :param str path: Absolute folder location.
+        :param int mechanism: This allows you to specify the behaviour for
             loading plugin. Current options are:
 
                 * IMPORTABLE:
@@ -586,34 +606,7 @@ class Factory(object):
                     sys.modules will it fall back to LOAD_SOURCE. This method
                     means you do not have to care too much, and is default
                     behaviour.
-
-        :type mechanism: int
-
-        :return: Count of plugins add_pathed.
-
-        .. code-block:: python
-
-            >>> import os
-            >>> import factories
-            >>>
-            >>> # -- We import these for demonstration purposes. We will utilise
-            >>> # -- the base class and the demonstration plugins
-            >>> import factories.examples.reader
-            >>> import factories.examples.reader.readers
-            >>>
-            >>> # -- Instance a factory, giving the abstract (so the factory
-            >>> # -- knows what it can store)
-            >>> factory = factories.Factory(
-            ...     abstract = factories.examples.reader.ReaderPlugin,
-            ... )
-            >>>
-            >>> # -- Register a path, allowing the factory to guess whether
-            >>> # -- to import or do a direct load
-            >>> factory.add_path(
-            ...     os.path.dirname(factories.examples.reader.readers.__file__),
-            ...     mechanism=factory.GUESS,
-            ... )
-
+        :return int: Count of plugins add_pathed.
         """
 
         # -- Refuse none-type paths
@@ -750,15 +743,11 @@ class Factory(object):
         """
         Registers the given class type as a plugin for this factory. Note,
         the class type being given must be inherited from the abstract.
-
         This is particularly useful if you have direct access to the plugin
         classes without needing to search disk locations.
-
-        :param class_type: The class type to add into the factories
+        :param type class_type: The class type to add into the factories
             repertoire.
-        :type class_type: type
-
-        :return: True if the registration was successful.
+        :return bool: True if the registration was successful.
         """
         if not inspect.isclass(class_type):
             return False
@@ -776,8 +765,6 @@ class Factory(object):
         """
         This will forget any add_pathed plugins or information about plugins
         and perform a search over all the stored paths.
-
-        :return:
         """
         # -- Take a snapshot of the path data
         path_data = self._add_pathed_paths.copy()
@@ -799,13 +786,6 @@ class Factory(object):
         require a specific version of a plugin (in a scenario where there
         are multiple plugins with the same identifier) this can also be
         specified.
-
-        :param str plugin_identifier: The identifying value of the plugin you
-            want to request.
-        :param int version: The version of the plugin you want. By default, this
-            is None. If the factory does not have a versioning identifier
-            declared this argument has no affect.
-        :return type|None: Plugin Class (or None).
 
         .. code-block:: python
 
@@ -837,6 +817,12 @@ class Factory(object):
             >>> print(plugin.version)
             1
 
+        :param str plugin_identifier: The identifying value of the plugin you
+            want to request.
+        :param int version: The version of the plugin you want. By default, this
+            is None. If the factory does not have a versioning identifier
+            declared this argument has no affect.
+        :return type|None: Plugin Class (or None).
         """
         # -- Get all the plugins which match the given
         # -- identifier
@@ -892,7 +878,6 @@ class Factory(object):
         This will remove a path from the path list. Any plugins from this 
         location will be removed.
         .. Note:: This action performs a factory clear and re-scan.
-        :param str path: Path to remove from the factory.
         
         .. code-block:: python
         
@@ -913,6 +898,7 @@ class Factory(object):
             >>> print(len(reader.factory.plugins()))
             0
 
+        :param str path: Path to remove from the factory.
         """
         # -- Take a snapshot of the path data
         path_data = self._add_pathed_paths.copy()
@@ -938,8 +924,6 @@ class Factory(object):
         """
         Get a list of all the versions available for the plugins with the
         given identifier.
-        :param str identifier: Plugin identifier to check
-        :rtype: list[int]
         
         .. code-block:: python
         
@@ -952,6 +936,8 @@ class Factory(object):
             >>> print(reader.factory.versions('JSONReader'))
             [1]
 
+        :param str identifier: Plugin identifier to check
+        :rtype: list[int]
         """
         if not self._version:
             return list()
