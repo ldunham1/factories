@@ -16,21 +16,12 @@ class FactoryTests(unittest.TestCase):
 
     # --------------------------------------------------------------------------
     def test_factory_is_instancable(self):
-        """
-        Checks to ensure we can instance a factory object
-        
-        :return: 
-        """
+        """Checks to ensure we can instance a factory object"""
         DataReader()
 
     # --------------------------------------------------------------------------
     def test_loading_plugins(self):
-        """
-        Tests that plugin paths result in the correct amount
-        of plugins.
-        
-        :return: 
-        """
+        """Tests that plugin paths result in the correct amount of plugins."""
         reader = DataReader()
 
         # -- Check we have the three available plugins
@@ -41,11 +32,7 @@ class FactoryTests(unittest.TestCase):
 
     # --------------------------------------------------------------------------
     def test_accessing_identifiers(self):
-        """
-        Validates that we can access all the required identifiers
-        
-        :return: 
-        """
+        """Validates that we can access all the required identifiers."""
         # -- Instance a factory
         reader = DataReader()
 
@@ -62,12 +49,7 @@ class FactoryTests(unittest.TestCase):
 
     # --------------------------------------------------------------------------
     def test_unregister_path(self):
-        """
-        Tests the removal of plugin paths does indeed remove accessible
-        plugins.
-
-        :return: 
-        """
+        """Tests the removal of plugin paths does indeed remove accessible plugins."""
         reader = DataReader()
 
         # -- Ensure we actually have some plugins
@@ -106,12 +88,7 @@ class FactoryTests(unittest.TestCase):
 
     # --------------------------------------------------------------------------
     def test_unregister_with_multiple_paths(self):
-        """
-        Tests the removal of plugin paths does indeed remove accessible
-        plugins.
-
-        :return: 
-        """
+        """Tests the removal of plugin paths does indeed remove accessible plugins."""
         reader = DataReader()
 
         # -- Add our path, which will
@@ -158,11 +135,7 @@ class FactoryTests(unittest.TestCase):
 
     # --------------------------------------------------------------------------
     def test_clearing_a_factory(self):
-        """
-        Checks that plugins can be cleared
-
-        :return:
-        """
+        """Checks that plugins can be cleared."""
         reader = DataReader()
 
         self.assertTrue(
@@ -177,11 +150,7 @@ class FactoryTests(unittest.TestCase):
 
     # --------------------------------------------------------------------------
     def test_handling_bad_python(self):
-        """
-        This will attempt to load a bad python file into the factory
-        
-        :return:
-        """
+        """This will attempt to load a bad python file into the factory."""
         reader = DataReader()
 
         reader.factory.add_path(
@@ -196,8 +165,6 @@ class FactoryTests(unittest.TestCase):
         """
         This will perform a reload of a factory ensuring that the plugin
         counts remain the same.
-        
-        :return: 
         """
         reader = DataReader()
 
@@ -213,12 +180,7 @@ class FactoryTests(unittest.TestCase):
 
     # --------------------------------------------------------------------------
     def test_requesting_unknown_plugin(self):
-        """
-        Ensures the factory copes when a user requests a plugin which does 
-        not exist
-        
-        :return: 
-        """
+        """Ensures the factory copes when a user requests a plugin which does not exist."""
         reader = DataReader()
 
         non_existant_plugin = reader.factory.request('nothing')
@@ -229,11 +191,7 @@ class FactoryTests(unittest.TestCase):
 
     # --------------------------------------------------------------------------
     def test_getting_latest_plugin(self):
-        """
-        Ensures we can access plugins by version
-        
-        :return: 
-        """
+        """Ensures we can access plugins by version."""
         reader = DataReader()
 
         # -- Add our test plugins
@@ -254,11 +212,7 @@ class FactoryTests(unittest.TestCase):
 
     # --------------------------------------------------------------------------
     def test_getting_specific_plugin_version(self):
-        """
-        Ensures we can access plugins by version
-
-        :return: 
-        """
+        """Ensures we can access plugins by version."""
         reader = DataReader()
 
         # -- Add our test plugins
@@ -290,11 +244,7 @@ class FactoryTests(unittest.TestCase):
 
     # --------------------------------------------------------------------------
     def test_out_of_range_version(self):
-        """
-        Ensures we can access plugins by version
-
-        :return: 
-        """
+        """Ensures we can access plugins by version."""
         reader = DataReader()
 
         # -- Request the json reader
@@ -308,9 +258,7 @@ class FactoryTests(unittest.TestCase):
     def test_version_request_on_non_versioned_factory(self):
         """
         When requesting a version on a non-version factory we should
-        just get the highest available version
-        
-        :return: 
+        just get the highest available version.
         """
         zoo = Zoo()
 
@@ -326,9 +274,7 @@ class FactoryTests(unittest.TestCase):
     def test_identifier_as_method(self):
         """
         Checks to ensure that we can correctly call an identifier when
-        it is a method rather than a property
-        
-        :return: 
+        it is a method rather than a property.
         """
         zoo = Zoo()
 
@@ -358,9 +304,7 @@ class FactoryTests(unittest.TestCase):
     def test_version_as_method(self):
         """
         Checks to ensure that we can correctly call an identifier when
-        it is a method rather than a property
-
-        :return: 
+        it is a method rather than a property.
         """
         reader = DataReader()
 
@@ -379,20 +323,13 @@ class FactoryTests(unittest.TestCase):
         )
 
         plugin = reader.factory.request('MethodVersionReader', version=1)
-
         self.assertIsNotNone(
             plugin
         )
 
     # --------------------------------------------------------------------------
     def test_accessing_versions(self):
-        """
-        Checks to see if we can access the available versions of a plugin
-        type.
-        
-        :return: 
-        """
-
+        """Checks to see if we can access the available versions of a plugin type."""
         reader = DataReader()
 
         # -- Add our test animals
@@ -410,14 +347,8 @@ class FactoryTests(unittest.TestCase):
 
     # --------------------------------------------------------------------------
     def test_accessing_versions_for_non_versioned_factory(self):
-        """
-        Checks to see if we can access the available versions of a plugin
-        type.
-
-        :return: 
-        """
+        """Checks to see if we can access the available versions of a plugin type."""
         zoo = Zoo()
-
         self.assertEqual(
             zoo.factory.versions('tiger'),
             [],
@@ -425,11 +356,7 @@ class FactoryTests(unittest.TestCase):
 
     # --------------------------------------------------------------------------
     def test_loading_from_pyc(self):
-        """
-        Ensures we can load a plugin from a pyc file
-
-        :return: 
-        """
+        """Ensures we can load a plugin from a pyc file."""
         zoo = Zoo()
 
         zoo.factory.add_path(
@@ -445,11 +372,7 @@ class FactoryTests(unittest.TestCase):
 
     # --------------------------------------------------------------------------
     def test_loading_from_non_package(self):
-        """
-        Ensures we can load a plugin from a pyc file
-
-        :return: 
-        """
+        """Ensures we can load a plugin from a pyc file."""
         zoo = Zoo()
 
         zoo.factory.add_path(
@@ -465,11 +388,7 @@ class FactoryTests(unittest.TestCase):
 
     # --------------------------------------------------------------------------
     def test_registering_from_single_file(self):
-        """
-        Ensures we can load a plugin from a pyc file
-
-        :return: 
-        """
+        """Ensures we can load a plugin from a pyc file."""
         # -- Define our non_package location
         non_package_location = os.path.join(
             os.path.dirname(__file__),
@@ -483,11 +402,9 @@ class FactoryTests(unittest.TestCase):
         # -- Instance our factory
         try:
             zoo = Zoo()
-
             zoo.factory.add_path(
                 non_package_location,
             )
-
             self.assertIsNotNone(
                 zoo.factory.versions('koala'),
             )
@@ -500,11 +417,7 @@ class FactoryTests(unittest.TestCase):
 
     # --------------------------------------------------------------------------
     def test_direct_load_of_pyc(self):
-        """
-        Ensures we can load a plugin from a pyc file when registering directly
-
-        :return: 
-        """
+        """Ensures we can load a plugin from a pyc file when registering directly."""
         zoo = Zoo()
 
         zoo.factory.add_path(
@@ -521,11 +434,7 @@ class FactoryTests(unittest.TestCase):
 
     # --------------------------------------------------------------------------
     def test_environment_variables(self):
-        """
-        Checks that paths defined in environment variables are added
-        
-        :return: 
-        """
+        """Checks that paths defined in environment variables are added."""
         # -- Check that the Tree Frog is not in the zoo by default
         default_zoo = Zoo()
 
