@@ -15,11 +15,7 @@ DEBUG_ENVVAR = 'PYTHON_FACTORIES_DEBUGGING'
 def enable_debugging(state=True):
     """
     Convenience function for enabling the debug log output of factories.
-
-    :param state: If True then debug log messages will be output.
-    :type state: bool
-
-    :return: None
+    :param bool state: If True then debug log messages will be output.
     """
     if state:
         log.setLevel(logging.DEBUG)

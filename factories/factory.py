@@ -44,15 +44,9 @@ def is_same_path(path_a, path_b):
     """
     Compare the given paths.
     Paths are expanded and normalized on comparison.
-
-    :param path_a: Path to compare.
-    :type path_a: str
-
-    :param path_b: Path to compare.
-    :type path_b: str
-
-    :return: True if the paths are the same.
-    :rtype: bool
+    :param str path_a: Path to compare.
+    :param str path_b: Path to compare.
+    :return bool: True if the paths are the same.
     """
     norm_path = lambda x: os.path.realpath(os.path.normpath(x))
     return norm_path(path_a) == norm_path(path_b)
@@ -139,37 +133,27 @@ class Factory(object):
                  mechanism=GUESS,
                  log_errors=True):
         """
-        :param abstract: The abstract class to utilise when searching for
-            plugins within the add_pathed plugin locations
-        :type abstract: Class
-
-        :param paths: List of paths which should immediately be searched
+        :param type abstract: The abstract class to utilise when searching for
+            plugins within the add_pathed plugin locations.
+        :param Optional[list[str]] paths: List of paths which should immediately be searched
             for plugins. All paths should be absolute.
             Any paths given directly to the factory during the initialisation
-            will utilise the guessing Mechanisms
-        :type paths: list(str)
-
-        :param plugin_identifier: This is used to idenfify one type of plugin
-            from another. By default the plugin class name is used, however
+            will utilise the guessing Mechanisms.
+        :param Optional[str] plugin_identifier: This is used to idenfify one type of plugin
+            from another. By default, the plugin class name is used, however
             you can specify the name of an attribute or method on the class to
             be queried for this also.
             The plugin identifier can be queried from the factory using the
             identifiers() call, or the request(plugin_identifier) call.
-        :type plugin_identifier: str
-
-        :param versioning_identifier: If given this allows plugins with the
+        :param Optional[str] versioning_identifier: If given this allows plugins with the
             same identifier to be differentiated. This allows for a default
             behaviour of always retrieving the latest plugin whilst allowing
             for lower priority plugins to be retrievable on request.
             This should be the name of an attribute or method on the plugin
             which always evaluates to a float or integer.
-        :type versioning_identifier: str
-
-        :param envvar: Optional environment variable name. If defined this
+        :param Optional[str] envvar: Optional environment variable name. If defined this
             will be inspected and split by ; and registered as paths.
-        :type envvar: str
-
-        :param mechanism: This allows you to specify the behaviour for
+        :param int mechanism: This allows you to specify the behaviour for
             loading plugin. Current options are:
 
                 * IMPORTABLE:
@@ -195,8 +179,6 @@ class Factory(object):
                     sys.modules will it fall back to LOAD_SOURCE. This method
                     means you do not have to care too much, and is default
                     behaviour.
-        :type mechanism: int
-
         """
         # -- Store our incoming variables
         self._abstract = abstract
@@ -238,10 +220,8 @@ class Factory(object):
     def _log(self, message, is_warning=False):
         """
         Internal logging logic to handle errors and warnings.
-
-        :param message:
-        :param is_warning:
-        :return:
+        :param str message: Message to log.
+        :param bool is_warning: True if the message is a warning.
         """
         # -- All factory logs include the abstract so it can be
         # -- easily identified
@@ -261,10 +241,8 @@ class Factory(object):
         """
         Utilises the plugin identifier value to request the identifying
         name of the plugin.
-
-        :param plugin: Plugin to take the name from
-
-        :return: str
+        :param object plugin: Plugin to take the name from
+        :rtype: str
         """
         # -- Pull out the object from the plugin
         identifier = getattr(plugin, self._identifier)
@@ -281,10 +259,8 @@ class Factory(object):
         """
         Utilises the plugin version identifier value to request the version
         number of the plugin.
-
-        :param plugin: Plugin to take the version from
-
-        :return: int or float
+        :param object plugin: Plugin to take the version from.
+        :rtype: int|float
         """
 
         # -- Pull out the object from the plugin
@@ -300,18 +276,15 @@ class Factory(object):
     # --------------------------------------------------------------------------
     def _mechanism_load(self, filepath):
         """
-        Attemps to find any plugins on the given filepath using the loading
+        Attempts to find any plugins on the given filepath using the loading
         Mechanisms. This utilises import.load_source.
 
-        As such, loading plugins through this Mechanisms has limitations in
-        terms of not being able to utilise relative imports but it has the
-        advantage of being able to load plugins from locations outside of
+        As such, loading plugins through these Mechanisms has limitations in
+        terms of not being able to utilise relative imports, but it has the
+        advantage of being able to load plugins from locations outside
         the sys.path.
-
-        :param filepath: Absolute filepath to the file to inspect
-        :type filepath: str
-
-        :return: List of found plugins
+        :param str filepath: Absolute filepath to the file to load.
+        :return object|None: Imported module, if successful.
         """
         filename = os.path.splitext(
             os.path.basename(filepath)
@@ -356,13 +329,10 @@ class Factory(object):
     # --------------------------------------------------------------------------
     def _mechanism_import(self, filepath):
         """
-        Attemps to resolve a pre-existing package from the given file. If
+        Attempts to resolve a pre-existing package from the given file. If
         the package is found it is returned otherwise we return None.
-
-        :param filepath: Absolute filepath to access
-        :type filepath: str
-
-        :return: List of found plugins
+        :param str filepath: Absolute filepath to access.
+        :return object: Imported plugin, if successful.
         """
         # -- Attempt to get the module name. This will return None
         # -- if the module does not exist
@@ -384,15 +354,10 @@ class Factory(object):
         """
         This will take a file and attempt to build up a module address from
         it by looking at the __init__ files around it.
-
         The module address will only be returned if it is successfully
         validated in the sys.modules. If no address could be determined this
         will return None.
-
-        :param filepath: Filepath to attempt to resolve
-        :type filepath: str
-
-        :return:
+        :param str filepath: Filepath to attempt to resolve.
         """
         # -- Ensure we're working with consistent character
         # -- types in the path
@@ -488,8 +453,6 @@ class Factory(object):
         """
         Clears the entire factory of plugins and add_pathed paths.
 
-        :return: None
-
         .. code-block:: python
 
             >>> from factories.examples.reader import DataReader
@@ -516,12 +479,10 @@ class Factory(object):
     # --------------------------------------------------------------------------
     def identifiers(self):
         """
-        Returns a list of plugin class names add_pathed within the factory.
-
+        Get a set of plugin class names add_pathed within the factory.
         The list of class names will be unique - therefore classes which share
         the same name will not appear twice.
-
-        :return: set(str)
+        :rtype: set[str]
 
         .. code-block:: python
 
@@ -543,9 +504,8 @@ class Factory(object):
     # --------------------------------------------------------------------------
     def paths(self):
         """
-        Returns all the paths add_pathed in the factory
-
-        :return: List of paths
+        Get all the paths add_pathed in the factory
+        :return list[str]: List of paths.
 
         .. code-block:: python
 
@@ -556,7 +516,7 @@ class Factory(object):
             >>>
             >>> # -- Print how many plugins we have
             >>> print(reader.factory.paths())
-            {...factories/examples/reader/readers}
+            ["...factories/examples/reader/readers"]
 
         """
         # -- Cast the keys to a list to ensure compatibility
@@ -566,10 +526,9 @@ class Factory(object):
     # --------------------------------------------------------------------------
     def plugins(self):
         """
-        Returns a unique list of plugins. Where multiple versions are available
+        Get a unique list of plugins. Where multiple versions are available
         the highest version will be given.
-
-        :return: list(class)
+        :return: list[type]
 
         .. code-block:: python
 
@@ -841,16 +800,12 @@ class Factory(object):
         are multiple plugins with the same identifier) this can also be
         specified.
 
-        :param plugin_identifier: The identifying value of the plugin you
-            want to request
-        :type plugin_identifier: str
-
-        :param version: The version of the plugin you want. By default this
+        :param str plugin_identifier: The identifying value of the plugin you
+            want to request.
+        :param int version: The version of the plugin you want. By default, this
             is None. If the factory does not have a versioning identifier
             declared this argument has no affect.
-        :type version: int
-
-        :return: Plugin Class (or None)
+        :return type|None: Plugin Class (or None).
 
         .. code-block:: python
 
@@ -861,11 +816,10 @@ class Factory(object):
             >>>
             >>> # -- Get a plugin by identifier
             >>> plugin = reader.factory.request('JSONReader')
-            >>>
             >>> print(plugin.__name__)
             JSONReader
 
-        Equally you can specify the version of a plugin you want when
+        Equally, you can specify the version of a plugin you want when
         you're dealing with factories which have the version identifier
         defined:
 
@@ -878,7 +832,6 @@ class Factory(object):
             >>>
             >>> # -- Get a plugin by identifier
             >>> plugin = reader.factory.request('JSONReader', version=1)
-            >>>
             >>> print(plugin.__name__)
             JSONReader
             >>> print(plugin.version)
@@ -938,13 +891,8 @@ class Factory(object):
         """
         This will remove a path from the path list. Any plugins from this 
         location will be removed.
-        
-        Note: This action performs a factory clear and re-scan.
-        
-        :param path: Path to remove from the factory.
-        :type path: str
-        
-        :return: None 
+        .. Note:: This action performs a factory clear and re-scan.
+        :param str path: Path to remove from the factory.
         
         .. code-block:: python
         
@@ -988,13 +936,10 @@ class Factory(object):
     # --------------------------------------------------------------------------
     def versions(self, identifier):
         """
-        Returns a list of all the versions available for the plugins with the
-        given identifier. 
-        
-        :param identifier: Plugin identifier to check
-        :type identifier: str
-        
-        :return: list(int)
+        Get a list of all the versions available for the plugins with the
+        given identifier.
+        :param str identifier: Plugin identifier to check
+        :rtype: list[int]
         
         .. code-block:: python
         
