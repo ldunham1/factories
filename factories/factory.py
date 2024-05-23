@@ -231,7 +231,10 @@ class Factory(object):
 
         # -- Any paths we're giving during the init we should
         # -- add_path
-        if paths and isinstance(paths, (list, tuple, set)):
+        if paths:
+            if not isinstance(paths, (list, tuple, set)):
+                paths = [paths]
+
             for path in paths:
                 self.add_path(path, mechanism=mechanism)
 
@@ -387,9 +390,9 @@ class Factory(object):
         try:
             mod = __import__(lone_name)
 
-        except Exception:
+        except Exception as e:
             self._log(
-                'Failed to lazy import "{}"'.format(lone_name),
+                'Failed to lazy import "{}" :: {}'.format(lone_name, e),
                 exc_info=True,
             )
 
@@ -429,7 +432,7 @@ class Factory(object):
 
                 # -- If the path does not exist, we have hit the end
                 # -- of the package
-                if os.path.exists(package_test):
+                if not os.path.exists(package_test):
                     continue
 
                 # -- Pop the final component and define the
@@ -445,9 +448,9 @@ class Factory(object):
                 try:
                     __import__(package_name)
 
-                except Exception:
+                except Exception as e:
                     self._log(
-                        'Failed to lazy import "{}"'.format(package_name),
+                        'Failed to lazy import "{}" :: {}'.format(package_name, e),
                         exc_info=True,
                     )
 
@@ -455,11 +458,14 @@ class Factory(object):
                 else:
                     return package_name
 
+                # -- We've established a viable filepath so we avoid trying to
+                # -- import compiled variants.
+                break
+
             # -- Pop the item and keep searching
             package_parts.append(part)
 
-        # -- We could not determine the package name, so we
-        # -- skip out
+        # -- We could not determine the package name, so we skip out.
         return None
 
     # --------------------------------------------------------------------------
