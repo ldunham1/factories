@@ -24,19 +24,51 @@ import sys
 import time
 import uuid
 
-# -- Our direct file loading depends on whether we're
-# -- in python 2 or python 3. Therefore we wrap these
-# -- imports in a try except
-try:
-    # noinspection PyUnresolvedReferences
-    from importlib.machinery import SourceFileLoader
-    _py_version = 3
-
-except ImportError:
-    import imp
-    _py_version = 2
-
 from .constants import log
+
+# -- Our direct file loading depends on whether we're
+# -- in python 2 or python 3. We generate the relevant function depending on
+# -- the current interpreter version.
+if sys.version_info >= (3, 5):
+    import importlib.util
+
+    def import_from_source(module_name, filepath):
+        spec = importlib.util.spec_from_file_location(module_name, filepath)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+elif sys.version_info >= (3, 0):
+    from importlib.machinery import SourceFileLoader
+    import importlib.util
+
+    def import_from_source(module_name, filepath):
+        ext = os.path.splitext(filepath)[1]
+        if ext == '.py':
+            module = SourceFileLoader(module_name, filepath).load_module()
+        elif ext == '.pyc':
+            spec = importlib.util.spec_from_file_location(module_name, filepath)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+        else:
+            raise ImportError('File type "{}" not supported (.py or .pyc only).'.format(ext))
+        return module
+
+# -- Python 2.7
+else:
+    # noinspection PyUnresolvedReferences
+    import imp
+
+    def import_from_source(module_name, filepath):
+        ext = os.path.splitext(filepath)[1]
+        if ext == '.py':
+            module = imp.load_source(module_name, filepath)
+        elif ext == '.pyc':
+            with open(filepath, 'rb') as fp:
+                module = imp.load_compiled(module_name, filepath, fp.read())
+        else:
+            raise ImportError('File type "{}" not supported (.py or .pyc only).'.format(ext))
+        return module
 
 
 # ------------------------------------------------------------------------------
@@ -121,7 +153,7 @@ class Factory(object):
     # -- file types.
     # -- Will match any .py or .pyc filename NOT starting with
     # -- underscore, space or numbers.
-    _PY_CHECK = re.compile(r'^[^_ 0-9]+?[\w]+?(\.py$|\.pyc$)')
+    _PY_CHECK = re.compile(r'[^_ 0-9]+?\w+?\.pyc?$')
 
     # --------------------------------------------------------------------------
     def __init__(self,
@@ -217,7 +249,7 @@ class Factory(object):
         )
 
     # --------------------------------------------------------------------------
-    def _log(self, message, is_warning=False):
+    def _log(self, message, is_warning=False, **kwargs):
         """
         Internal logging logic to handle errors and warnings.
         :param str message: Message to log.
@@ -231,10 +263,10 @@ class Factory(object):
         )
 
         if is_warning and self._log_errors:
-            log.warning(message)
+            log.warning(message, **kwargs)
 
         else:
-            log.debug(message)
+            log.debug(message, **kwargs)
 
     # --------------------------------------------------------------------------
     def get_identifier(self, plugin):
@@ -297,24 +329,7 @@ class Factory(object):
         # -- different between python2 and python3, so we need to deal
         # -- with both cases.
         try:
-            if _py_version == 3:
-                return SourceFileLoader(
-                    module_name,
-                    filepath,
-                ).load_module()
-
-            elif _py_version == 2:
-                if filepath.endswith('.py'):
-                    return imp.load_source(
-                        module_name,
-                        filepath,
-                    )
-
-                elif filepath.endswith('.pyc'):
-                    return imp.load_compiled(
-                        module_name,
-                        filepath,
-                    )
+            return import_from_source(module_name, filepath)
 
         except Exception:
             self._log(
@@ -322,6 +337,7 @@ class Factory(object):
                     filepath,
                     str(sys.exc_info()),
                 ),
+                is_warning=True,
             )
             return None
 
@@ -348,8 +364,7 @@ class Factory(object):
         return None
 
     # --------------------------------------------------------------------------
-    @classmethod
-    def _module_address(cls, filepath):
+    def _module_address(self, filepath):
         """
         This will take a file and attempt to build up a module address from
         it by looking at the __init__ files around it.
@@ -373,7 +388,7 @@ class Factory(object):
             mod = __import__(lone_name)
 
         except Exception:
-            log.debug(
+            self._log(
                 'Failed to lazy import "{}"'.format(lone_name),
                 exc_info=True,
             )
@@ -431,7 +446,7 @@ class Factory(object):
                     __import__(package_name)
 
                 except Exception:
-                    log.debug(
+                    self._log(
                         'Failed to lazy import "{}"'.format(package_name),
                         exc_info=True,
                     )
@@ -658,8 +673,7 @@ class Factory(object):
 
             # -- If we need to import - or guess, then we attempt to
             # -- get the package name
-            if (mechanism == self.IMPORTABLE or
-                    mechanism == self.GUESS):
+            if mechanism in (self.IMPORTABLE, self.GUESS):
                 module_to_inspect = self._mechanism_import(filepath)
 
                 # -- The plugin name may clash with a module name, so we
@@ -669,21 +683,20 @@ class Factory(object):
                         not is_same_path(module_to_inspect.__file__, filepath)):
                     module_to_inspect = None
 
-                if module_to_inspect:
-                    self._log('Module Import : {}'.format(filepath))
+            if module_to_inspect:
+                self._log('Module Import : {}'.format(filepath))
 
             # -- If we do not have a module, and we're using the loading
             # -- or guess Mechanisms
-            if not module_to_inspect:
-                if (mechanism == self.LOAD_SOURCE or
-                        mechanism == self.GUESS):
-                    module_to_inspect = self._mechanism_load(filepath)
-                    if module_to_inspect:
-                        self._log('Direct Load : {}'.format(filepath))
+            elif mechanism in (self.LOAD_SOURCE, self.GUESS):
+                module_to_inspect = self._mechanism_load(filepath)
+
+            if module_to_inspect:
+                self._log('Direct Load : {}'.format(filepath))
 
             # -- If the module is invalid for any reason we do not
             # -- go further
-            if not module_to_inspect:
+            else:
                 self._log(
                     'Could not import or load : {}\n\t{}'.format(
                         filepath,
@@ -698,12 +711,7 @@ class Factory(object):
             try:
 
                 # -- Look for implementations of the abstract
-                for item_name in dir(module_to_inspect):
-
-                    item = getattr(
-                        module_to_inspect,
-                        item_name,
-                    )
+                for item_name, item in module_to_inspect.__dict__.items():
 
                     # -- If this bases off the abstract, we should store it
                     if not inspect.isclass(item):
@@ -721,8 +729,8 @@ class Factory(object):
             # -- We keep the exception type explitely broad as it
             # -- is completely out of our control what might be being
             # -- imported
-            except Exception:
-                self._log(str(sys.exc_info()), is_warning=True)
+            except Exception as e:
+                self._log(str(e), is_warning=True, exc_info=True)
 
             else:
                 # -- Output the time it took to load this module
@@ -752,10 +760,10 @@ class Factory(object):
         if not inspect.isclass(class_type):
             return False
 
-        if not issubclass(class_type, self._abstract):
+        elif not issubclass(class_type, self._abstract):
             return False
 
-        if class_type not in self._plugins:
+        elif class_type not in self._plugins:
             self._plugins.append(class_type)
 
         return True
