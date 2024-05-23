@@ -14,14 +14,9 @@ class JSONReader(ReaderPlugin):
         """
         This should return a dictionary of data collated from the
         file.
-
-        Note: This MUST be re-implemented in the plugin
-
-        :param filepath: Absolute filepath to file
-        :type filepath: str
-
-        :return: dictionary of data taken from the file
-        :rtype: dict
+        .. note:: This MUST be re-implemented in the plugin
+        :param str filepath: Absolute filepath to file
+        :return dict: dictionary of data taken from the file
         """
         with open(filepath, 'r') as f:
             return json.load(f)
@@ -46,14 +41,9 @@ class INIReader(ReaderPlugin):
         """
         This should return a dictionary of data collated from the
         file.
-
-        Note: This MUST be re-implemented in the plugin
-
-        :param filepath: Absolute filepath to file
-        :type filepath: str
-
-        :return: dictionary of data taken from the file
-        :rtype: dict
+        .. note:: This MUST be re-implemented in the plugin
+        :param str filepath: Absolute filepath to file.
+        :return dict: dictionary of data taken from the file.
         """
         output = dict()
 
