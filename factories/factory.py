@@ -171,7 +171,7 @@ class Factory(object):
         # -- of what plugins they hold. We use a dictionary
         # -- for this so we can store the Mechanisms for each
         # -- path too
-        self._add_pathed_paths = dict()
+        self._paths = dict()
 
         # -- Any paths we're giving during the init we should
         # -- add_path
@@ -437,8 +437,8 @@ class Factory(object):
 
         """
         # -- Start clearing out the factory variables
-        self._plugins = list()
-        self._add_pathed_paths = dict()
+        del self._plugins[:]
+        self._paths.clear()
 
     # --------------------------------------------------------------------------
     def identifiers(self):
@@ -485,7 +485,7 @@ class Factory(object):
         """
         # -- Cast the keys to a list to ensure compatibility
         # -- between python 2.x and 3.x
-        return list(self._add_pathed_paths.keys())
+        return list(self._paths.keys())
 
     # --------------------------------------------------------------------------
     def plugins(self):
@@ -618,7 +618,7 @@ class Factory(object):
 
         # -- Regardless of what is found along the path we store the
         # -- fact that this path has been given to us
-        self._add_pathed_paths[path] = mechanism
+        self._paths[path] = mechanism
 
         # -- We return how many plugins have been add_pathed
         # -- by this path, so we get the plugin count prior
@@ -723,7 +723,7 @@ class Factory(object):
         and perform a search over all the stored paths.
         """
         # -- Take a snapshot of the path data
-        path_data = self._add_pathed_paths.copy()
+        path_data = self._paths.copy()
 
         # -- Start clearing out the factory variables
         self.clear()
@@ -856,12 +856,14 @@ class Factory(object):
 
         :param str path: Path to remove from the factory.
         """
+        # TODO: Consider detecting plugin from path then removing matching
+        #  plugins instead to be less disruptive.
+    
         # -- Take a snapshot of the path data
-        path_data = self._add_pathed_paths.copy()
+        path_data = self._paths.copy()
 
         # -- Start clearing out the factory variables
-        self._plugins = list()
-        self._add_pathed_paths = dict()
+        self.clear()
 
         # -- Now cycle over the path data and re-add_path them
         for original_path, mechanism in path_data.items():
