@@ -74,7 +74,6 @@ factory.add_path(
 We can now begin to interact with our factory
 
 ```python
-
 # -- Perhaps we're dealing with something  obscure, like a 
 # -- UI where we do not know exactly what is needed up front.
 # -- So we add a button for each tool
