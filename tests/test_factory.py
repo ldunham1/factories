@@ -425,7 +425,7 @@ class FactoryTests(unittest.TestCase):
                 os.path.dirname(__file__),
                 'test_plugins',
             ),
-            mechanism=zoo.factory.LOAD_SOURCE,
+            mechanism=factories.ModuleImportMechanism.LOAD_SOURCE,
         )
 
         self.assertIsNotNone(

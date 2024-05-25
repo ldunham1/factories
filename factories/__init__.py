@@ -65,6 +65,7 @@ __version__ = "1.3.0"
 from .constants import (
     enable_debugging,
     log,
+    ModuleImportMechanism,
 )
 
 from .factory import (

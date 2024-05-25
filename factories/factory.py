@@ -24,7 +24,7 @@ import sys
 import time
 import uuid
 
-from .constants import log
+from .constants import log, ModuleImportMechanism
 from .utils import import_from_source, is_same_path, is_module
 
 
@@ -88,16 +88,13 @@ class Factory(object):
 
     """
 
-    # -- These are loading mechanism enums
-    GUESS = 0
-    LOAD_SOURCE = 1
-    IMPORTABLE = 2
-
     # -- Regex to test for any of the relevant python
     # -- file types.
     # -- Will match any .py or .pyc filename NOT starting with
     # -- underscore, space or numbers.
     _PY_CHECK = re.compile(r'[^_ 0-9]+?\w+?\.pyc?$')
+
+    DEFAULT_MECHANISM = ModuleImportMechanism.GUESS
 
     # --------------------------------------------------------------------------
     def __init__(self,
@@ -106,7 +103,7 @@ class Factory(object):
                  plugin_identifier=None,
                  versioning_identifier=None,
                  envvar=None,
-                 mechanism=GUESS,
+                 mechanism=DEFAULT_MECHANISM,
                  log_errors=True):
         """
         :param type abstract: The abstract class to utilise when searching for
@@ -129,32 +126,8 @@ class Factory(object):
             which always evaluates to a float or integer.
         :param Optional[str] envvar: Optional environment variable name. If defined this
             will be inspected and split by ; and registered as paths.
-        :param int mechanism: This allows you to specify the behaviour for
-            loading plugin. Current options are:
-
-                * IMPORTABLE:
-                    This mechanism should be used if your code resides within
-                    already importable locations. This method is mandatory if
-                    your code contains relative imports. Because this is
-                    importing modules which are available on the sys.path the
-                    class names will resolve nicely too.
-
-                * LOAD_SOURCE
-                    This is useful when your plugin code is outside of the
-                    interpreters sys.path. This mechanism will load the file
-                    directly rather than import it from sys.modules.
-                    This method has flexibility in terms of structure but
-                    means you cannot utilise relative import paths within
-                    your plugin. All loaded plugins using this module are
-                    imported into a namespace defined through a uuid.
-
-                * GUESS
-                    This is the default mechanism. When guessing the factory
-                    will attempt to utilise the IMPORTABLE method first, and
-                    only if the module is not accessible from within
-                    sys.modules will it fall back to LOAD_SOURCE. This method
-                    means you do not have to care too much, and is default
-                    behaviour.
+        :param ModuleLoadingMechanism|int mechanism: This allows you to specify the
+            behaviour for loading plugin.
         """
         # -- Store our incoming variables
         self._abstract = abstract
@@ -280,7 +253,7 @@ class Factory(object):
 
         except Exception:
             self._log(
-                'Failed trying to direct load : {} ({})'.format(
+                'Failed trying to direct load {} :: {}'.format(
                     filepath,
                     str(sys.exc_info()),
                 ),
@@ -549,7 +522,7 @@ class Factory(object):
 
         return count
 
-    def add_path(self, path, mechanism=GUESS):
+    def add_path(self, path, mechanism=DEFAULT_MECHANISM):
         """
         Registers a search address with the factory. The factory will
         immediately being searching recursively within this location for
@@ -575,36 +548,12 @@ class Factory(object):
             >>> # -- to import or do a direct load
             >>> factory.add_path(
             ...     os.path.dirname(factories.examples.reader.readers.__file__),
-            ...     mechanism=factory.GUESS,
+            ...     mechanism=factory.DEFAULT_MECHANISM,
             ... )
 
         :param str path: Absolute folder location.
-        :param int mechanism: This allows you to specify the behaviour for
-            loading plugin. Current options are:
-
-                * IMPORTABLE:
-                    This mechanism should be used if your code resides within
-                    already importable locations. This method is mandatory if
-                    your code contains relative imports. Because this is
-                    importing modules which are available on the sys.path the
-                    class names will resolve nicely too.
-
-                * LOAD_SOURCE
-                    This is useful when your plugin code is outside of the
-                    interpreters sys.path. This mechanism will load the file
-                    directly rather than import it from sys.modules.
-                    This method has flexibility in terms of structure but
-                    means you cannot utilise relative import paths within
-                    your plugin. All loaded plugins using this module are
-                    imported into a namespace defined through a uuid.
-
-                * GUESS
-                    This is the default mechanism. When guessing the factory
-                    will attempt to utilise the IMPORTABLE method first, and
-                    only if the module is not accessible from within
-                    sys.modules will it fall back to LOAD_SOURCE. This method
-                    means you do not have to care too much, and is default
-                    behaviour.
+        :param ModuleImportMechanism|int mechanism: This allows you to specify the
+            behaviour for loading plugin.
         :return int: Count of plugins add_pathed.
         """
 
@@ -657,7 +606,7 @@ class Factory(object):
 
             # -- If we need to import - or guess, then we attempt to
             # -- get the package name
-            if mechanism in (self.IMPORTABLE, self.GUESS):
+            if mechanism in (ModuleImportMechanism.IMPORTABLE, ModuleImportMechanism.GUESS):
                 module_to_inspect = self._mechanism_import(filepath)
 
                 # -- The plugin name may clash with a module name, so we
@@ -672,7 +621,7 @@ class Factory(object):
 
             # -- If we do not have a module, and we're using the loading
             # -- or guess Mechanisms
-            elif mechanism in (self.LOAD_SOURCE, self.GUESS):
+            elif mechanism in (ModuleImportMechanism.LOAD_SOURCE, ModuleImportMechanism.GUESS):
                 module_to_inspect = self._mechanism_load(filepath)
 
             if module_to_inspect:
